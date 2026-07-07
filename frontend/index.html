@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>CloudVault</title>
+
+    <link rel="stylesheet" href="style.css">
+
+</head>
+
+<body>
+
+    <div class="container">
+
+        <h1>CloudVault</h1>
+
+        <hr>
+
+        <h2>Register</h2>
+
+        <input type="text" id="registerUsername" placeholder="Username">
+
+        <input type="email" id="registerEmail" placeholder="Email">
+
+        <input type="password" id="registerPassword" placeholder="Password">
+
+        <button onclick="register()">Register</button>
+
+        <hr>
+
+        <h2>Login</h2>
+
+        <input type="text" id="loginUsername" placeholder="Username">
+
+        <input type="password" id="loginPassword" placeholder="Password">
+
+        <button onclick="login()">Login</button>
+
+        <hr>
+
+        <div id="dashboard" style="display:none;">
+
+            <h2>Dashboard</h2>
+
+            <h3>Upload File</h3>
+
+            <input type="file" id="file">
+
+            <button onclick="upload()">Upload</button>
+
+            <hr>
+
+            <h3>Files</h3>
+
+            <button onclick="loadFiles()">Refresh Files</button>
+
+            <ul id="fileList">
+
+            </ul>
+
+        </div>
+
+    </div>
+
+<script src="script.js"></script>
+
+</body>
+
+</html>
