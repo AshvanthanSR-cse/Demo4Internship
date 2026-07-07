@@ -11,7 +11,7 @@ const {
 } = require("@aws-sdk/lib-dynamodb");
 
 const REGION = process.env.AWS_REGION || "us-east-1";
-const TABLE_NAME = process.env.DYNAMODB_TABLE || "Users";
+const TABLE_NAME = process.env.DYNAMODB_TABLE;
 
 // Base low-level DynamoDB client
 const client = new DynamoDBClient({ region: REGION });
