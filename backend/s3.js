@@ -10,7 +10,7 @@ const {
 } = require("@aws-sdk/client-s3");
 
 const REGION = process.env.AWS_REGION || "us-east-1";
-const BUCKET_NAME = process.env.S3_BUCKET || "cloudvault-storage";
+const BUCKET_NAME = process.env.S3_BUCKET;
 
 const s3Client = new S3Client({ region: REGION });
 
