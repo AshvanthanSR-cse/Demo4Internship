@@ -1,8 +1,10 @@
 // script.js
 // Handles all frontend logic for CloudVault
 
-// Change this if your backend runs on a different host/port
-const API_BASE_URL = "http://localhost:5000";
+// Automatically uses whatever host/port the page was loaded from.
+// This way it works no matter what port you map in `docker run -p HOST:5000`,
+// and it'll keep working later when you deploy to EC2/a real domain.
+const API_BASE_URL = window.location.origin;
 
 // Holds the currently logged in username (in-memory only)
 let currentUsername = null;
