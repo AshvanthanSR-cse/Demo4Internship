@@ -1,41 +1,98 @@
+// database.js
+// Handles all DynamoDB operations for CloudVault (Users table)
+
 require("dotenv").config();
 
-const { Pool } = require("pg");
+const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
+const {
+  DynamoDBDocumentClient,
+  PutCommand,
+  GetCommand,
+} = require("@aws-sdk/lib-dynamodb");
 
-const pool = new Pool({
+const REGION = process.env.AWS_REGION || "us-east-1";
+const TABLE_NAME = process.env.DYNAMODB_TABLE || "Users";
 
-    host: process.env.DB_HOST,
+// Base low-level DynamoDB client
+const client = new DynamoDBClient({ region: REGION });
 
-    port: process.env.DB_PORT,
+// Document client lets us work with plain JS objects instead of AttributeValue maps
+const docClient = DynamoDBDocumentClient.from(client);
 
-    user: process.env.DB_USER,
+/**
+ * Registers a new user in DynamoDB.
+ * Checks if the username already exists before creating.
+ *
+ * @param {string} username
+ * @param {string} email
+ * @param {string} password
+ * @returns {Promise<{success: boolean, message: string}>}
+ */
+async function registerUser(username, email, password) {
+  try {
+    // Check if user already exists
+    const existingUser = await docClient.send(
+      new GetCommand({
+        TableName: TABLE_NAME,
+        Key: { username },
+      })
+    );
 
-    password: process.env.DB_PASSWORD,
+    if (existingUser.Item) {
+      return { success: false, message: "Username already exists" };
+    }
 
-    database: process.env.DB_NAME,
+    // Save new user (password stored as plain text - learning project only)
+    await docClient.send(
+      new PutCommand({
+        TableName: TABLE_NAME,
+        Item: {
+          username,
+          email,
+          password,
+        },
+      })
+    );
 
-    ssl: false
+    return { success: true, message: "User Registered Successfully" };
+  } catch (error) {
+    console.error("registerUser error:", error);
+    return { success: false, message: "Failed to register user" };
+  }
+}
 
-});
+/**
+ * Validates login credentials against DynamoDB.
+ *
+ * @param {string} username
+ * @param {string} password
+ * @returns {Promise<{success: boolean, message: string}>}
+ */
+async function loginUser(username, password) {
+  try {
+    const result = await docClient.send(
+      new GetCommand({
+        TableName: TABLE_NAME,
+        Key: { username },
+      })
+    );
 
-pool.connect()
+    if (!result.Item) {
+      return { success: false, message: "User not found" };
+    }
 
-.then(() => {
+    if (result.Item.password !== password) {
+      return { success: false, message: "Incorrect password" };
+    }
 
-    console.log("===================================");
+    return { success: true, message: "Login Successful" };
+  } catch (error) {
+    console.error("loginUser error:", error);
+    return { success: false, message: "Failed to login" };
+  }
+}
 
-    console.log("PostgreSQL Connected Successfully");
-
-    console.log("===================================");
-
-})
-
-.catch((error) => {
-
-    console.log("Database Connection Failed");
-
-    console.log(error);
-
-});
-
-module.exports = pool;
+module.exports = {
+  registerUser,
+  loginUser,
+};

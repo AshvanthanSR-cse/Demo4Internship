@@ -1,311 +1,177 @@
+// server.js
+// CloudVault Express server
+
 require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
 const multer = require("multer");
 
-const db = require("./database");
-const s3 = require("./s3");
+const { registerUser, loginUser } = require("./database");
+const { createFolder, uploadFile, listFiles } = require("./s3");
 
 const app = express();
+const PORT = process.env.PORT || 5000;
 
-const PORT = 5000;
-
+// Middleware
 app.use(cors());
 app.use(express.json());
 
-const upload = multer({
-    storage: multer.memoryStorage()
-});
+// Multer stores the uploaded file in memory so we can stream its buffer to S3
+const upload = multer({ storage: multer.memoryStorage() });
 
-/* ============================================
-   HEALTH API
-============================================ */
-
+// ------------------------------------------------------------------
+// GET /health
+// ------------------------------------------------------------------
 app.get("/health", (req, res) => {
-
-    res.json({
-
-        success: true,
-
-        message: "CloudVault Backend Running"
-
-    });
-
+  res.status(200).send("Backend Running");
 });
 
-
-/* ============================================
-   REGISTER
-============================================ */
-
+// ------------------------------------------------------------------
+// POST /register
+// ------------------------------------------------------------------
 app.post("/register", async (req, res) => {
+  try {
+    const { username, email, password } = req.body;
 
-    try {
-
-        const {
-
-            username,
-
-            email,
-
-            password
-
-        } = req.body;
-
-        // Save User into PostgreSQL
-
-        const query = `
-        INSERT INTO users(username,email,password)
-        VALUES($1,$2,$3)
-        RETURNING *`;
-
-        const values = [
-
-            username,
-
-            email,
-
-            password
-
-        ];
-
-        await db.query(query, values);
-
-        /*
-            Create S3 Folder
-
-            Example
-
-            cloudvault-storage/
-
-                ashvanthan/
-
-        */
-
-        // TODO
-        // await s3.createFolder(username);
-
-        res.json({
-
-            success: true,
-
-            message: "User Registered Successfully"
-
-        });
-
+    if (!username || !email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "username, email, and password are required",
+      });
     }
 
-    catch (error) {
+    // Save user record in DynamoDB
+    const dbResult = await registerUser(username, email, password);
 
-        console.log(error);
-
-        res.status(500).json({
-
-            success: false,
-
-            message: "Registration Failed"
-
-        });
-
+    if (!dbResult.success) {
+      return res.status(400).json(dbResult);
     }
 
+    // Create the user's folder in S3
+    const folderResult = await createFolder(username);
+
+    if (!folderResult.success) {
+      return res.status(500).json({
+        success: false,
+        message: folderResult.message,
+      });
+    }
+
+    return res.status(201).json({
+      success: true,
+      message: "User Registered Successfully",
+    });
+  } catch (error) {
+    console.error("POST /register error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
 });
 
-
-/* ============================================
-   LOGIN
-============================================ */
-
+// ------------------------------------------------------------------
+// POST /login
+// ------------------------------------------------------------------
 app.post("/login", async (req, res) => {
+  try {
+    const { username, password } = req.body;
 
-    try {
-
-        const {
-
-            username,
-
-            password
-
-        } = req.body;
-
-        const query = `
-
-        SELECT *
-
-        FROM users
-
-        WHERE username=$1
-
-        AND password=$2
-
-        `;
-
-        const values = [
-
-            username,
-
-            password
-
-        ];
-
-        const result = await db.query(
-
-            query,
-
-            values
-
-        );
-
-        if (result.rows.length === 0) {
-
-            return res.status(401).json({
-
-                success: false,
-
-                message: "Invalid Username or Password"
-
-            });
-
-        }
-
-        res.json({
-
-            success: true,
-
-            message: "Login Successful",
-
-            username: username
-
-        });
-
+    if (!username || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "username and password are required",
+      });
     }
 
-    catch (error) {
+    const result = await loginUser(username, password);
 
-        console.log(error);
-
-        res.status(500).json({
-
-            success: false,
-
-            message: "Login Failed"
-
-        });
-
+    if (!result.success) {
+      return res.status(401).json(result);
     }
 
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error("POST /login error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
 });
 
+// ------------------------------------------------------------------
+// POST /upload
+// ------------------------------------------------------------------
+app.post("/upload", upload.single("file"), async (req, res) => {
+  try {
+    const { username } = req.body;
+    const file = req.file;
 
-/* ============================================
-   FILE UPLOAD
-============================================ */
-
-app.post(
-
-    "/upload",
-
-    upload.single("file"),
-
-    async (req, res) => {
-
-        try {
-
-            const username = req.body.username;
-
-            const file = req.file;
-
-            // TODO
-
-            // await s3.uploadFile(
-
-            // username,
-
-            // file.originalname,
-
-            // file.buffer
-
-            // );
-
-            res.json({
-
-                success: true,
-
-                message: "File Uploaded Successfully"
-
-            });
-
-        }
-
-        catch (error) {
-
-            console.log(error);
-
-            res.status(500).json({
-
-                success: false,
-
-                message: "Upload Failed"
-
-            });
-
-        }
-
+    if (!username) {
+      return res.status(400).json({
+        success: false,
+        message: "username is required",
+      });
     }
 
-);
+    if (!file) {
+      return res.status(400).json({
+        success: false,
+        message: "file is required",
+      });
+    }
 
+    const result = await uploadFile(username, file);
 
-/* ============================================
-   VIEW FILES
-============================================ */
+    if (!result.success) {
+      return res.status(500).json(result);
+    }
 
+    return res.status(200).json({
+      success: true,
+      message: "File uploaded successfully",
+      key: result.key,
+    });
+  } catch (error) {
+    console.error("POST /upload error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+});
+
+// ------------------------------------------------------------------
+// GET /files/:username
+// ------------------------------------------------------------------
 app.get("/files/:username", async (req, res) => {
+  try {
+    const { username } = req.params;
 
-    try {
+    const result = await listFiles(username);
 
-        const username = req.params.username;
-
-        // TODO
-
-        // const files = await s3.listFiles(username);
-
-        const files = [];
-
-        res.json(files);
-
+    if (!result.success) {
+      return res.status(500).json(result);
     }
 
-    catch (error) {
-
-        console.log(error);
-
-        res.status(500).json({
-
-            success: false,
-
-            message: "Unable To Retrieve Files"
-
-        });
-
-    }
-
+    return res.status(200).json({
+      success: true,
+      files: result.files,
+    });
+  } catch (error) {
+    console.error("GET /files/:username error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
 });
 
-
-/* ============================================
-   SERVER
-============================================ */
-
+// ------------------------------------------------------------------
+// Start server
+// ------------------------------------------------------------------
 app.listen(PORT, () => {
-
-    console.log("=================================");
-
-    console.log("CloudVault Backend Started");
-
-    console.log("http://localhost:5000");
-
-    console.log("=================================");
-
+  console.log(`CloudVault backend running on port ${PORT}`);
 });

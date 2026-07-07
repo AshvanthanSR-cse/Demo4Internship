@@ -1,74 +1,85 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-
-    <meta charset="UTF-8">
-
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>CloudVault</title>
-
-    <link rel="stylesheet" href="style.css">
-
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CloudVault</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
-
 <body>
 
-    <div class="container">
+  <header>
+    <h1>CloudVault</h1>
+    <p>Simple AWS-powered cloud storage</p>
+  </header>
 
-        <h1>CloudVault</h1>
+  <main>
 
-        <hr>
+    <!-- REGISTER SECTION -->
+    <section id="register-section" class="card">
+      <h2>Register</h2>
+      <form id="register-form">
+        <label for="register-username">Username</label>
+        <input type="text" id="register-username" required />
 
-        <h2>Register</h2>
+        <label for="register-email">Email</label>
+        <input type="email" id="register-email" required />
 
-        <input type="text" id="registerUsername" placeholder="Username">
+        <label for="register-password">Password</label>
+        <input type="password" id="register-password" required />
 
-        <input type="email" id="registerEmail" placeholder="Email">
+        <button type="submit">Register</button>
+      </form>
+      <p id="register-message" class="message"></p>
+      <p class="switch-link">
+        Already have an account?
+        <a href="#" id="show-login-link">Login here</a>
+      </p>
+    </section>
 
-        <input type="password" id="registerPassword" placeholder="Password">
+    <!-- LOGIN SECTION -->
+    <section id="login-section" class="card hidden">
+      <h2>Login</h2>
+      <form id="login-form">
+        <label for="login-username">Username</label>
+        <input type="text" id="login-username" required />
 
-        <button onclick="register()">Register</button>
+        <label for="login-password">Password</label>
+        <input type="password" id="login-password" required />
 
-        <hr>
+        <button type="submit">Login</button>
+      </form>
+      <p id="login-message" class="message"></p>
+      <p class="switch-link">
+        Don't have an account?
+        <a href="#" id="show-register-link">Register here</a>
+      </p>
+    </section>
 
-        <h2>Login</h2>
+    <!-- DASHBOARD SECTION -->
+    <section id="dashboard-section" class="card hidden">
+      <h2>Dashboard</h2>
+      <p>Logged in as: <span id="dashboard-username"></span></p>
+      <button id="logout-button">Logout</button>
 
-        <input type="text" id="loginUsername" placeholder="Username">
+      <hr />
 
-        <input type="password" id="loginPassword" placeholder="Password">
+      <h3>Upload a File</h3>
+      <form id="upload-form">
+        <input type="file" id="file-input" required />
+        <button type="submit">Upload</button>
+      </form>
+      <p id="upload-message" class="message"></p>
 
-        <button onclick="login()">Login</button>
+      <hr />
 
-        <hr>
+      <h3>Your Files</h3>
+      <button id="refresh-files-button">Refresh Files</button>
+      <ul id="file-list"></ul>
+    </section>
 
-        <div id="dashboard" style="display:none;">
+  </main>
 
-            <h2>Dashboard</h2>
-
-            <h3>Upload File</h3>
-
-            <input type="file" id="file">
-
-            <button onclick="upload()">Upload</button>
-
-            <hr>
-
-            <h3>Files</h3>
-
-            <button onclick="loadFiles()">Refresh Files</button>
-
-            <ul id="fileList">
-
-            </ul>
-
-        </div>
-
-    </div>
-
-<script src="script.js"></script>
-
+  <script src="script.js"></script>
 </body>
-
 </html>

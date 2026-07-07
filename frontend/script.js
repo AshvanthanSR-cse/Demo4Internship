@@ -1,119 +1,202 @@
-const API="http://localhost:5000";
+// script.js
+// Handles all frontend logic for CloudVault
 
-async function register(){
+// Change this if your backend runs on a different host/port
+const API_BASE_URL = "http://localhost:5000";
 
-    const username=document.getElementById("registerUsername").value;
+// Holds the currently logged in username (in-memory only)
+let currentUsername = null;
 
-    const email=document.getElementById("registerEmail").value;
+// ------------------------------------------------------------------
+// Element references
+// ------------------------------------------------------------------
+const registerSection = document.getElementById("register-section");
+const loginSection = document.getElementById("login-section");
+const dashboardSection = document.getElementById("dashboard-section");
 
-    const password=document.getElementById("registerPassword").value;
+const registerForm = document.getElementById("register-form");
+const loginForm = document.getElementById("login-form");
+const uploadForm = document.getElementById("upload-form");
 
-    const response=await fetch(API+"/register",{
+const registerMessage = document.getElementById("register-message");
+const loginMessage = document.getElementById("login-message");
+const uploadMessage = document.getElementById("upload-message");
 
-        method:"POST",
+const dashboardUsername = document.getElementById("dashboard-username");
+const fileList = document.getElementById("file-list");
 
-        headers:{
+const showLoginLink = document.getElementById("show-login-link");
+const showRegisterLink = document.getElementById("show-register-link");
+const logoutButton = document.getElementById("logout-button");
+const refreshFilesButton = document.getElementById("refresh-files-button");
 
-            "Content-Type":"application/json"
-
-        },
-
-        body:JSON.stringify({
-
-            username,
-
-            email,
-
-            password
-
-        })
-
-    });
-
-    const data=await response.json();
-
-    alert(data.message);
-
+// ------------------------------------------------------------------
+// View helpers
+// ------------------------------------------------------------------
+function showSection(section) {
+  registerSection.classList.add("hidden");
+  loginSection.classList.add("hidden");
+  dashboardSection.classList.add("hidden");
+  section.classList.remove("hidden");
 }
 
-async function login(){
+showLoginLink.addEventListener("click", (e) => {
+  e.preventDefault();
+  showSection(loginSection);
+});
 
-    const username=document.getElementById("loginUsername").value;
+showRegisterLink.addEventListener("click", (e) => {
+  e.preventDefault();
+  showSection(registerSection);
+});
 
-    const password=document.getElementById("loginPassword").value;
+// ------------------------------------------------------------------
+// REGISTER
+// ------------------------------------------------------------------
+registerForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
 
-    const response=await fetch(API+"/login",{
+  const username = document.getElementById("register-username").value.trim();
+  const email = document.getElementById("register-email").value.trim();
+  const password = document.getElementById("register-password").value;
 
-        method:"POST",
+  registerMessage.textContent = "Registering...";
 
-        headers:{
-
-            "Content-Type":"application/json"
-
-        },
-
-        body:JSON.stringify({
-
-            username,
-
-            password
-
-        })
-
+  try {
+    const response = await fetch(`${API_BASE_URL}/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, email, password }),
     });
 
-    const data=await response.json();
+    const data = await response.json();
+    registerMessage.textContent = data.message;
 
-    alert(data.message);
-
-    if(data.success){
-
-        document.getElementById("dashboard").style.display="block";
-
+    if (response.ok && data.success) {
+      registerForm.reset();
+      setTimeout(() => showSection(loginSection), 1000);
     }
+  } catch (error) {
+    console.error("Register error:", error);
+    registerMessage.textContent = "Something went wrong. Please try again.";
+  }
+});
 
-}
+// ------------------------------------------------------------------
+// LOGIN
+// ------------------------------------------------------------------
+loginForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
 
-async function upload(){
+  const username = document.getElementById("login-username").value.trim();
+  const password = document.getElementById("login-password").value;
 
-    const file=document.getElementById("file").files[0];
+  loginMessage.textContent = "Logging in...";
 
-    const formData=new FormData();
-
-    formData.append("file",file);
-
-    const response=await fetch(API+"/upload",{
-
-        method:"POST",
-
-        body:formData
-
+  try {
+    const response = await fetch(`${API_BASE_URL}/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username, password }),
     });
 
-    const data=await response.json();
+    const data = await response.json();
+    loginMessage.textContent = data.message;
 
-    alert(data.message);
+    if (response.ok && data.success) {
+      currentUsername = username;
+      dashboardUsername.textContent = currentUsername;
+      loginForm.reset();
+      loginMessage.textContent = "";
+      showSection(dashboardSection);
+      loadFiles();
+    }
+  } catch (error) {
+    console.error("Login error:", error);
+    loginMessage.textContent = "Something went wrong. Please try again.";
+  }
+});
 
-}
+// ------------------------------------------------------------------
+// LOGOUT
+// ------------------------------------------------------------------
+logoutButton.addEventListener("click", () => {
+  currentUsername = null;
+  fileList.innerHTML = "";
+  showSection(loginSection);
+});
 
-async function loadFiles(){
+// ------------------------------------------------------------------
+// UPLOAD
+// ------------------------------------------------------------------
+uploadForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
 
-    const response=await fetch(API+"/files");
+  const fileInput = document.getElementById("file-input");
+  const file = fileInput.files[0];
 
-    const files=await response.json();
+  if (!file || !currentUsername) {
+    uploadMessage.textContent = "Please select a file first.";
+    return;
+  }
 
-    const list=document.getElementById("fileList");
+  const formData = new FormData();
+  formData.append("username", currentUsername);
+  formData.append("file", file);
 
-    list.innerHTML="";
+  uploadMessage.textContent = "Uploading...";
 
-    files.forEach(file=>{
-
-        const li=document.createElement("li");
-
-        li.innerText=file;
-
-        list.appendChild(li);
-
+  try {
+    const response = await fetch(`${API_BASE_URL}/upload`, {
+      method: "POST",
+      body: formData,
     });
 
+    const data = await response.json();
+    uploadMessage.textContent = data.message;
+
+    if (response.ok && data.success) {
+      uploadForm.reset();
+      loadFiles();
+    }
+  } catch (error) {
+    console.error("Upload error:", error);
+    uploadMessage.textContent = "Something went wrong. Please try again.";
+  }
+});
+
+// ------------------------------------------------------------------
+// LIST FILES
+// ------------------------------------------------------------------
+async function loadFiles() {
+  if (!currentUsername) return;
+
+  fileList.innerHTML = "<li>Loading files...</li>";
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/files/${currentUsername}`);
+    const data = await response.json();
+
+    fileList.innerHTML = "";
+
+    if (response.ok && data.success) {
+      if (data.files.length === 0) {
+        fileList.innerHTML = "<li>No files uploaded yet.</li>";
+        return;
+      }
+
+      data.files.forEach((file) => {
+        const li = document.createElement("li");
+        li.textContent = file.name;
+        fileList.appendChild(li);
+      });
+    } else {
+      fileList.innerHTML = "<li>Failed to load files.</li>";
+    }
+  } catch (error) {
+    console.error("Load files error:", error);
+    fileList.innerHTML = "<li>Something went wrong loading files.</li>";
+  }
 }
+
+refreshFilesButton.addEventListener("click", loadFiles);
